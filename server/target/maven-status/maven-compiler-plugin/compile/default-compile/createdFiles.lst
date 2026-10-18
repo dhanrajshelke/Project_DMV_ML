@@ -1,0 +1,4 @@
+com\cybersleuth\config\CorsConfig.class
+com\cybersleuth\controller\ThreatController.class
+com\cybersleuth\CyberSecurityApplication.class
+com\cybersleuth\service\ThreatService.class
