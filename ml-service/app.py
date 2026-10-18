@@ -205,7 +205,7 @@ def run_triage():
     else:
         top_features = []
 
-    # Prepare sanitized records preview for the UI table (first 50 records)
+    # Prepare records for the UI table (user-configurable limit without arbitrary 50 cap)
     display_cols = [
         col for col in [
             "Destination Port", "Protocol", "Flow Duration", "Total Fwd Packets",
@@ -214,8 +214,23 @@ def run_triage():
         ] if col in enriched_df.columns
     ]
     
+    # Check user-specified limit parameter (default: unlimited up to 5000)
+    user_limit = data.get("limit")
+    if user_limit is not None and str(user_limit).upper() != "ALL":
+        try:
+            user_limit = int(user_limit)
+        except (ValueError, TypeError):
+            user_limit = None
+    else:
+        user_limit = None
+
+    table_records = enriched_df[display_cols].copy()
+    if user_limit and user_limit > 0:
+        table_records = table_records.head(user_limit)
+    else:
+        table_records = table_records.head(5000)
+
     # Add record id
-    table_records = enriched_df[display_cols].head(50).copy()
     table_records.insert(0, "Record_ID", [f"FLOW-{i+1:04d}" for i in range(len(table_records))])
     
     # Map MITRE tactic to each row for immediate forensic display

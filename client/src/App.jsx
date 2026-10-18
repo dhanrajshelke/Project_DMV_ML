@@ -1,4 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import {
+  AttackDonutChart,
+  DestinationPortsBarChart,
+  AnomalyHistogramChart,
+  FlowTelemetryScatterPlot
+} from './components/AnalyticsCharts';
 
 // Backend Endpoints (supports Vercel public rewrites and local development)
 const JAVA_API_BASE = import.meta.env.VITE_JAVA_API_BASE || (import.meta.env.DEV ? 'http://localhost:8085/api' : '/api');
@@ -28,14 +34,14 @@ export default function App() {
   const [activeModalRecord, setActiveModalRecord] = useState(null);
   const [validationError, setValidationError] = useState(null);
 
-  // Search & Filtering
+  // Search & Filtering (Defaults to Attacks Only as requested)
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedAttackType, setSelectedAttackType] = useState('ALL');
+  const [selectedAttackType, setSelectedAttackType] = useState('ATTACKS_ONLY');
   const [severityFilter, setSeverityFilter] = useState('ALL');
 
-  // Pagination
+  // Pagination & User-Configurable Limits
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(25);
 
   // Check backend health periodically
   useEffect(() => {
@@ -167,6 +173,7 @@ export default function App() {
         await sleep(350);
 
         setTriageData(payload);
+        setCurrentView('analytics'); // Automatically switch to Attack Analytics to display updated graphs
         setCurrentPage(1);
         const timeStr = new Date().toLocaleTimeString();
         setLastScanCompleted(timeStr);
@@ -306,11 +313,17 @@ export default function App() {
   const summary = triageData?.summary || {
     total_records: 0,
     normal_count: 0,
+    clean_normal_count: 0,
     suspicious_count: 0,
     anomaly_count: 0,
     suspicious_percentage: 0
   };
   const dmv = triageData?.dmv_metrics || {};
+
+  // Benign Baseline is reduced by the number of Statistical Anomalies
+  const cleanNormalCount = summary.clean_normal_count !== undefined 
+    ? summary.clean_normal_count 
+    : Math.max(0, summary.normal_count - (summary.anomaly_count || 0));
 
   // Records Filtering
   const allRows = triageData?.records || [];
@@ -321,6 +334,8 @@ export default function App() {
     let matchesAttack = true;
     if (selectedAttackType === 'ALL') {
       matchesAttack = true;
+    } else if (selectedAttackType === 'ATTACKS_ONLY') {
+      matchesAttack = !pred.toUpperCase().includes('BENIGN');
     } else if (selectedAttackType === 'BENIGN') {
       matchesAttack = pred.toUpperCase().includes('BENIGN');
     } else if (selectedAttackType === 'BRUTE') {
@@ -345,6 +360,7 @@ export default function App() {
   // Attack category counts for quick pills
   const attackCounts = {
     all: allRows.length,
+    attacksOnly: allRows.filter(r => !String(r['Model Prediction']).toUpperCase().includes('BENIGN')).length,
     benign: allRows.filter(r => String(r['Model Prediction']).toUpperCase().includes('BENIGN')).length,
     ddos: allRows.filter(r => String(r['Model Prediction']).includes('DDoS') || String(r['Model Prediction']).includes('DoS')).length,
     portscan: allRows.filter(r => String(r['Model Prediction']).includes('PortScan')).length,
@@ -392,7 +408,7 @@ export default function App() {
             className={`nav-item ${currentView === 'architecture' ? 'active' : ''}`}
             onClick={() => setCurrentView('architecture')}
           >
-            <span>Architecture &amp; Auditing</span>
+            <span>Scan Audit History</span>
           </button>
         </nav>
 
@@ -434,7 +450,7 @@ export default function App() {
             <span>CyberSleuth</span>
             <span>/</span>
             <span className="current">
-              {currentView === 'traffic' ? 'Traffic Logs' : currentView === 'analytics' ? 'Attack Analytics' : 'System Architecture'}
+              {currentView === 'traffic' ? 'Traffic Logs' : currentView === 'analytics' ? 'Attack Analytics' : 'Scan Audit History'}
             </span>
           </div>
           <div style={{display: 'flex', alignItems: 'center', gap: '14px'}}>
@@ -463,12 +479,12 @@ export default function App() {
               <h1>
                 {currentView === 'traffic' && 'Network Traffic Analysis'}
                 {currentView === 'analytics' && 'Threat Intelligence & Attack Breakdown'}
-                {currentView === 'architecture' && 'Full-Stack Architecture & Audit Logs'}
+                {currentView === 'architecture' && 'Scan Audit History & Logs'}
               </h1>
               <p>
                 {currentView === 'traffic' && 'Real-time telemetry classification via Random Forest & Isolation Forest Ensembles.'}
                 {currentView === 'analytics' && 'Aggregated statistical distributions, port frequency analysis, and feature importances.'}
-                {currentView === 'architecture' && 'Spring Boot 2.7 REST API integration with Scikit-Learn Python ML microservice.'}
+                {currentView === 'architecture' && 'Historical log of executed threat scans and backend forensics.'}
               </p>
             </div>
 
@@ -491,51 +507,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* DATASET SELECTION & RUN CONTROL PANEL */}
-          <div className="dataset-control-panel">
-            <div className="dataset-control-left">
-              <span className="dataset-label">Target Dataset:</span>
-              <select 
-                id="select-dataset"
-                value={selectedPreset} 
-                onChange={(e) => {
-                  setSelectedPreset(e.target.value);
-                  handleRunDataset(e.target.value);
-                }}
-                className="dataset-select"
-                disabled={loading}
-              >
-                <option value="benchmark">Default: Benchmark Network Traffic (200 records)</option>
-                <option value="ddos">Dataset 1: DDoS / DoS Attack Floods (200 records)</option>
-                <option value="portscan">Dataset 2: PortScan Reconnaissance (200 records)</option>
-                <option value="bruteforce">Dataset 3: Patator Brute-Force Auth (200 records)</option>
-                <option value="benign">Dataset 4: Benign Safe Enterprise Baseline (200 records)</option>
-                {selectedPreset === 'custom' && (
-                  <option value="custom">Custom Uploaded: {activeDatasetName}</option>
-                )}
-              </select>
-            </div>
-
-            <div className="dataset-actions">
-              <button 
-                id="btn-run-dataset"
-                className="run-dataset-btn"
-                onClick={() => handleRunDataset(selectedPreset)}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <span className="radar-spinner"></span>
-                    Running Analysis ({scanningProgress}%)...
-                  </>
-                ) : (
-                  <>
-                    <span>▶</span> Run Selected Dataset
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
 
           {/* REAL-TIME SCANNING / RUNNING PROGRESS BANNER */}
           {loading && (
@@ -628,13 +599,13 @@ export default function App() {
 
           {/* Metric Summary Counters */}
           <div className="stats-container">
-            <div className="stat-box">
+            <div className="stat-box" onClick={() => setCurrentView('traffic')} style={{ cursor: 'pointer' }} title="Click to view flow records table">
               <div className="stat-box-label">Total Flows Evaluated</div>
               <div className="stat-box-value">{summary.total_records.toLocaleString()}</div>
               <div className="stat-box-desc">Ingested network flow telemetry</div>
             </div>
 
-            <div className="stat-box">
+            <div className="stat-box" onClick={() => setCurrentView('analytics')} style={{ cursor: 'pointer' }} title="Click to view attack breakdown graph">
               <div className="stat-box-label">Attacks Identified</div>
               <div className="stat-box-value" style={{color: summary.suspicious_count > 0 ? '#F87171' : '#34D399'}}>
                 {summary.suspicious_count.toLocaleString()}
@@ -642,7 +613,7 @@ export default function App() {
               <div className="stat-box-desc">{summary.suspicious_percentage}% threat detection ratio</div>
             </div>
 
-            <div className="stat-box">
+            <div className="stat-box" onClick={() => setCurrentView('analytics')} style={{ cursor: 'pointer' }} title="Click to view Isolation Forest anomaly histogram">
               <div className="stat-box-label">Statistical Anomalies</div>
               <div className="stat-box-value" style={{color: '#FBBF24'}}>
                 {summary.anomaly_count.toLocaleString()}
@@ -650,12 +621,16 @@ export default function App() {
               <div className="stat-box-desc">Isolation Forest outlier score &gt; 0.75</div>
             </div>
 
-            <div className="stat-box">
+            <div className="stat-box" onClick={() => setCurrentView('traffic')} style={{ cursor: 'pointer' }} title="Click to view traffic logs">
               <div className="stat-box-label">Benign Baseline</div>
               <div className="stat-box-value" style={{color: '#34D399'}}>
-                {summary.normal_count.toLocaleString()}
+                {cleanNormalCount.toLocaleString()}
               </div>
-              <div className="stat-box-desc">Baseline safe network activity</div>
+              <div className="stat-box-desc">
+                {summary.anomaly_count > 0 
+                  ? `Safe baseline (-${summary.anomaly_count.toLocaleString()} anomalies deducted)`
+                  : 'Baseline safe network activity'}
+              </div>
             </div>
           </div>
 
@@ -664,8 +639,21 @@ export default function App() {
             <div className="content-box">
               {/* Controls Cluster */}
               <div className="content-box-header">
-                <div className="content-box-title">
-                  Flow Records ({filteredRows.length})
+                <div className="content-box-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>Flow Records ({filteredRows.length})</span>
+                  {selectedAttackType === 'ATTACKS_ONLY' && (
+                    <span style={{
+                      fontSize: '11px',
+                      color: '#EF4444',
+                      fontWeight: 600,
+                      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      padding: '2px 8px',
+                      borderRadius: '4px'
+                    }}>
+                      🚨 Attacks Only
+                    </span>
+                  )}
                 </div>
 
                 <div className="controls-cluster">
@@ -688,6 +676,32 @@ export default function App() {
                     <option value="MEDIUM">Medium</option>
                     <option value="SAFE">Safe</option>
                   </select>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--fg-muted)' }}>
+                    <span>Limit:</span>
+                    <select
+                      value={pageSize >= allRows.length && allRows.length > 0 ? 'ALL' : pageSize}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === 'ALL') {
+                          setPageSize(allRows.length || 5000);
+                        } else {
+                          setPageSize(Number(val));
+                        }
+                        setCurrentPage(1);
+                      }}
+                      className="input-select"
+                      style={{ width: '95px' }}
+                      title="User-defined record display limit"
+                    >
+                      <option value="10">10 / page</option>
+                      <option value="25">25 / page</option>
+                      <option value="50">50 / page</option>
+                      <option value="100">100 / page</option>
+                      <option value="250">250 / page</option>
+                      <option value="ALL">All ({filteredRows.length})</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -757,10 +771,14 @@ export default function App() {
               <div style={{padding: '12px 16px 4px'}}>
                 <div className="attack-filter-pills">
                   <button 
-                    className={`pill-filter-btn ${selectedAttackType === 'ALL' ? 'active' : ''}`}
-                    onClick={() => { setSelectedAttackType('ALL'); setCurrentPage(1); }}
+                    className={`pill-filter-btn ${selectedAttackType === 'ATTACKS_ONLY' ? 'active' : ''}`}
+                    onClick={() => { setSelectedAttackType('ATTACKS_ONLY'); setCurrentPage(1); }}
+                    style={{
+                      borderColor: selectedAttackType === 'ATTACKS_ONLY' ? '#EF4444' : undefined,
+                      fontWeight: 600
+                    }}
                   >
-                    All Flows <span className="pill-count">{attackCounts.all}</span>
+                    🚨 Attacks Only <span className="pill-count" style={{ color: '#F87171', fontWeight: 700 }}>{attackCounts.attacksOnly}</span>
                   </button>
 
                   <button 
@@ -785,10 +803,17 @@ export default function App() {
                   </button>
 
                   <button 
+                    className={`pill-filter-btn ${selectedAttackType === 'ALL' ? 'active' : ''}`}
+                    onClick={() => { setSelectedAttackType('ALL'); setCurrentPage(1); }}
+                  >
+                    All Traffic (Inc. Safe) <span className="pill-count">{attackCounts.all}</span>
+                  </button>
+
+                  <button 
                     className={`pill-filter-btn ${selectedAttackType === 'BENIGN' ? 'active' : ''}`}
                     onClick={() => { setSelectedAttackType('BENIGN'); setCurrentPage(1); }}
                   >
-                    Safe Baseline <span className="pill-count">{attackCounts.benign}</span>
+                    Safe Baseline Only <span className="pill-count">{attackCounts.benign}</span>
                   </button>
                 </div>
               </div>
@@ -927,163 +952,73 @@ export default function App() {
             </div>
           )}
 
-          {/* VIEW 2: ANALYTICS */}
+          {/* VIEW 2: ANALYTICS (Rich Graphical Charts) */}
           {currentView === 'analytics' && (
             <div className="analytics-grid">
-              {/* Attack Breakdown */}
+              {/* Chart 1: Attack Category Frequency Donut */}
               <div className="analytics-card">
-                <div className="analytics-card-title">Attack Category Frequency</div>
+                <div className="analytics-card-title">
+                  <span>Attack Category Distribution</span>
+                  <span style={{ fontSize: '11px', color: 'var(--fg-muted)', fontWeight: 400 }}>Class Ratio</span>
+                </div>
                 {summary.label_breakdown ? (
-                  Object.entries(summary.label_breakdown).map(([label, count]) => {
-                    const pct = Math.round((count / summary.total_records) * 100);
-                    const isBenign = label.toUpperCase().includes('BENIGN');
-                    return (
-                      <div className="bar-row-item" key={label}>
-                        <div className="bar-row-header">
-                          <span style={{fontWeight: 600, color: isBenign ? '#34D399' : '#F87171'}}>{label}</span>
-                          <span>{count} ({pct}%)</span>
-                        </div>
-                        <div className="bar-row-track">
-                          <div 
-                            className="bar-row-progress"
-                            style={{
-                              width: `${pct}%`,
-                              backgroundColor: isBenign ? '#10B981' : '#EF4444'
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : <p style={{color: 'var(--fg-muted)'}}>No data available.</p>}
+                  <AttackDonutChart
+                    labelBreakdown={summary.label_breakdown}
+                    totalRecords={summary.total_records}
+                  />
+                ) : <p style={{ color: 'var(--fg-muted)' }}>No data available.</p>}
               </div>
 
-              {/* Destination Port Distribution */}
+              {/* Chart 2: Destination Port Distribution */}
               <div className="analytics-card">
-                <div className="analytics-card-title">Top Target Destination Ports</div>
+                <div className="analytics-card-title">
+                  <span>Top Target Destination Ports</span>
+                  <span style={{ fontSize: '11px', color: '#06B6D4', fontWeight: 500 }}>Service Hits</span>
+                </div>
                 {dmv.port_counts ? (
-                  Object.entries(dmv.port_counts).map(([port, count]) => {
-                    const pct = Math.round((count / summary.total_records) * 100);
-                    const svc = port === '80' ? 'HTTP' :
-                                port === '443' ? 'HTTPS' :
-                                port === '21' ? 'FTP' :
-                                port === '22' ? 'SSH' :
-                                port === '3306' ? 'MySQL' :
-                                port === '8080' ? 'HTTP-Proxy' : `Port ${port}`;
-                    return (
-                      <div className="bar-row-item" key={port}>
-                        <div className="bar-row-header">
-                          <span>{svc} (Port {port})</span>
-                          <span>{count} hits ({pct}%)</span>
-                        </div>
-                        <div className="bar-row-track">
-                          <div 
-                            className="bar-row-progress"
-                            style={{width: `${Math.min(pct * 2, 100)}%`, backgroundColor: '#06B6D4'}}
-                          ></div>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : <p style={{color: 'var(--fg-muted)'}}>No port telemetry available.</p>}
+                  <DestinationPortsBarChart
+                    portCounts={dmv.port_counts}
+                    totalRecords={summary.total_records}
+                  />
+                ) : <p style={{ color: 'var(--fg-muted)' }}>No port telemetry available.</p>}
               </div>
 
-              {/* Feature Importances */}
-              <div className="analytics-card">
-                <div className="analytics-card-title">Random Forest Feature Importance</div>
-                {dmv.feature_importances && dmv.feature_importances.length > 0 ? (
-                  dmv.feature_importances.map((item, idx) => {
-                    const feat = item.feature || item.Feature || `Feature ${idx + 1}`;
-                    const imp = item.importance || item.Importance || 0.1;
-                    const pct = Math.round(imp * 100);
-                    return (
-                      <div className="bar-row-item" key={idx}>
-                        <div className="bar-row-header">
-                          <span>{feat}</span>
-                          <span style={{fontFamily: 'var(--font-mono)'}}>{(imp * 100).toFixed(1)}%</span>
-                        </div>
-                        <div className="bar-row-track">
-                          <div 
-                            className="bar-row-progress"
-                            style={{width: `${pct * 2.5}%`, backgroundColor: '#8B5CF6'}}
-                          ></div>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : <p style={{color: 'var(--fg-muted)'}}>Feature metadata loaded.</p>}
-              </div>
 
-              {/* Anomaly Distribution */}
+              {/* Chart 4: Isolation Forest Anomaly Histogram (Real Vertical Histogram) */}
               <div className="analytics-card">
-                <div className="analytics-card-title">Isolation Forest Anomaly Histogram</div>
+                <div className="analytics-card-title">
+                  <span>Isolation Forest Anomaly Histogram</span>
+                  <span style={{ fontSize: '11px', color: '#FBBF24', fontWeight: 600 }}>
+                    {summary.anomaly_count} Outliers (&gt; 0.75)
+                  </span>
+                </div>
                 {dmv.anomaly_histogram ? (
-                  dmv.anomaly_histogram.map((bin, idx) => (
-                    <div className="bar-row-item" key={idx}>
-                      <div className="bar-row-header">
-                        <span>Range {bin.range}</span>
-                        <span>{bin.count} flows</span>
-                      </div>
-                      <div className="bar-row-track">
-                        <div 
-                          className="bar-row-progress"
-                          style={{
-                            width: `${Math.min((bin.count / summary.total_records) * 200, 100)}%`,
-                            backgroundColor: idx > 6 ? '#EF4444' : idx > 4 ? '#F59E0B' : '#10B981'
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))
-                ) : <p style={{color: 'var(--fg-muted)'}}>No histogram available.</p>}
+                  <AnomalyHistogramChart
+                    histogramData={dmv.anomaly_histogram}
+                    totalRecords={summary.total_records}
+                    anomalyCount={summary.anomaly_count}
+                  />
+                ) : <p style={{ color: 'var(--fg-muted)' }}>No histogram available.</p>}
+              </div>
+
+              {/* Chart 5: Flow Telemetry Pattern Scatter / Outlier Cluster */}
+              <div className="analytics-card-full">
+                <div className="analytics-card-title">
+                  <span>Network Flow Telemetry Pattern (Duration vs Anomaly Score)</span>
+                  <span style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>
+                    Green: Benign Baseline | Red: Flagged Attack
+                  </span>
+                </div>
+                {triageData?.records && triageData.records.length > 0 ? (
+                  <FlowTelemetryScatterPlot records={triageData.records} />
+                ) : <p style={{ color: 'var(--fg-muted)' }}>Run analysis to display flow scatter profile.</p>}
               </div>
             </div>
           )}
 
-          {/* VIEW 3: ARCHITECTURE */}
+          {/* VIEW 3: SCAN AUDIT HISTORY */}
           {currentView === 'architecture' && (
             <div>
-              <div className="content-box" style={{marginBottom: '20px', padding: '16px'}}>
-                <div className="content-box-title" style={{marginBottom: '10px'}}>
-                  System Microservice Architecture
-                </div>
-                <p style={{color: 'var(--fg-muted)', fontSize: '13px', marginBottom: '16px'}}>
-                  Enterprise integration bridging a Java Spring Boot backend, React client, and Python ML model:
-                </p>
-
-                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px'}}>
-                  <div style={{border: '1px solid var(--border-default)', padding: '12px', borderRadius: '6px'}}>
-                    <div style={{fontWeight: 600, color: '#38BDF8', marginBottom: '4px'}}>1. Frontend Client</div>
-                    <div style={{fontSize: '12px', color: 'var(--fg-muted)'}}>
-                      React 18 SPA built with Vite. Handles user inputs, filtering, table pagination, and CSV export.
-                    </div>
-                    <div style={{marginTop: '8px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--fg-subtle)'}}>
-                      PORT: 5173
-                    </div>
-                  </div>
-
-                  <div style={{border: '1px solid var(--border-default)', padding: '12px', borderRadius: '6px'}}>
-                    <div style={{fontWeight: 600, color: '#F59E0B', marginBottom: '4px'}}>2. API Gateway &amp; Service</div>
-                    <div style={{fontSize: '12px', color: 'var(--fg-muted)'}}>
-                      Java Spring Boot 2.7 REST API. Orchestrates telemetry, manages CORS, audits scan requests in-memory.
-                    </div>
-                    <div style={{marginTop: '8px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--fg-subtle)'}}>
-                      PORT: 8085
-                    </div>
-                  </div>
-
-                  <div style={{border: '1px solid var(--border-default)', padding: '12px', borderRadius: '6px'}}>
-                    <div style={{fontWeight: 600, color: '#8B5CF6', marginBottom: '4px'}}>3. ML Intelligence Service</div>
-                    <div style={{fontSize: '12px', color: 'var(--fg-muted)'}}>
-                      Python Flask microservice executing pre-trained Random Forest &amp; Isolation Forest inference pipelines.
-                    </div>
-                    <div style={{marginTop: '8px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--fg-subtle)'}}>
-                      PORT: 5000
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Java Audit Log */}
               <div className="content-box">
                 <div className="content-box-header">

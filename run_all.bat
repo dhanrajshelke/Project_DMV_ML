@@ -3,7 +3,7 @@ TITLE CyberSleuth Full-Stack Launcher (React + Java + Python ML)
 
 echo =====================================================================
 echo  🛡️ Launching CyberSleuth Full-Stack Platform
-echo  1. Python ML & DMV Service (Port 5000)
+echo  1. Python ML ^& DMV Service (Port 5000)
 echo  2. Java Spring Boot Backend (Port 8085)
 echo  3. React Vite Frontend (Port 5173)
 echo =====================================================================
@@ -12,18 +12,18 @@ echo =====================================================================
 set "JAVA_HOME=C:\Program Files\Java\jdk1.8.0_481"
 set "PATH=%JAVA_HOME%\bin;%PATH%"
 
-echo [*] Starting Python ML & DMV Microservice...
+echo [*] Starting Python ML ^& DMV Microservice...
 start "CyberSleuth-Python-ML" cmd /k "python ml-service\app.py"
 
-timeout /t 3 /nobreak >nul
+ping 127.0.0.1 -n 4 >nul
 
 echo [*] Starting Java Spring Boot Backend...
 start "CyberSleuth-Java-Backend" cmd /k "cd server && mvn spring-boot:run"
 
-timeout /t 5 /nobreak >nul
+ping 127.0.0.1 -n 6 >nul
 
 echo [*] Starting React Frontend...
-start "CyberSleuth-React-UI" cmd /k "cd client && npm run dev"
+start "CyberSleuth-React-UI" cmd /k "cd client && npm.cmd run dev"
 
 echo.
 echo =====================================================================

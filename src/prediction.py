@@ -92,8 +92,12 @@ def run_traffic_inference(
     # Generate inference summary statistics
     total_records = len(df)
     suspicious_count = int(np.sum(is_suspicious))
-    normal_count = total_records - suspicious_count
     anomaly_count = int(np.sum(anomaly_flags == "Potentially Anomalous"))
+    
+    # Benign baseline is reduced by the number of statistical anomalies
+    raw_normal_count = max(0, total_records - suspicious_count)
+    clean_normal_count = max(0, raw_normal_count - anomaly_count)
+    normal_count = clean_normal_count
     
     label_breakdown = enriched_df["Model Prediction"].value_counts().to_dict()
     severity_breakdown = enriched_df["Threat Severity"].value_counts().to_dict()
@@ -101,6 +105,8 @@ def run_traffic_inference(
     summary = {
         "total_records": total_records,
         "normal_count": normal_count,
+        "raw_normal_count": raw_normal_count,
+        "clean_normal_count": clean_normal_count,
         "suspicious_count": suspicious_count,
         "suspicious_percentage": round((suspicious_count / total_records) * 100, 1) if total_records > 0 else 0,
         "anomaly_count": anomaly_count,

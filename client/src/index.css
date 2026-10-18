@@ -653,6 +653,16 @@ body {
   border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.analytics-card-full {
+  grid-column: 1 / -1;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .analytics-card-title {
