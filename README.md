@@ -7,168 +7,338 @@
 [![Machine Learning](https://img.shields.io/badge/ML-Scikit--Learn-F7931E.svg?logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
 [![License](https://img.shields.io/badge/License-Academic%20Use-green.svg)]()
 
-An enterprise-grade, 3-tier full-stack Cyber Threat Intelligence (CTI) and Data Mining & Visualization (DMV) platform. Designed for network flow intrusion triage, anomaly scoring, and MITRE ATT&CK correlation.
+An enterprise-grade, three-tier full-stack Cyber Threat Intelligence (CTI) and Data Mining & Visualization (DMV) platform. Designed for network-flow intrusion triage, anomaly scoring, and MITRE ATT&CK correlation.
 
 ---
 
 ## 📑 Table of Contents
+
 1. [Project Overview](#1-project-overview)
-2. [3-Tier Full-Stack Architecture](#2-3-tier-full-stack-architecture)
+2. [Three-Tier Full-Stack Architecture](#2-three-tier-full-stack-architecture)
 3. [Key Features](#3-key-features)
-4. [Clean Directory Structure](#4-clean-directory-structure)
+4. [Directory Structure](#4-directory-structure)
 5. [One-Click Startup](#5-one-click-startup)
-6. [Datasets & Verification](#6-datasets--verification)
+6. [Datasets and Verification](#6-datasets-and-verification)
 7. [API Endpoints](#7-api-endpoints)
+8. [Using the Platform](#8-using-the-platform)
+9. [Interpreting Predictions and Anomaly Scores](#9-interpreting-predictions-and-anomaly-scores)
+10. [Suitable Public Datasets](#10-suitable-public-datasets)
+11. [Limitations and Future Work](#11-limitations-and-future-work)
 
 ---
 
-## 1. Project Objective
+## 1. Project Overview
 
-In modern Security Operations Centers (SOCs), network analysts face overwhelming volumes of telemetry and alert fatigue. **CyberSleuth** provides:
-- **Strict Network Flow Verification**: Validates 5-tuple network parameters and rejects unrelated CSVs (sales, student marks).
-- **Ensemble ML Classification**: Classifies high-dimensional packet flows into specific cyber attack classes (DDoS, PortScan, Brute-Force Patator, Benign).
-- **Unsupervised Anomaly Detection**: Isolation Forest identifies zero-day and stealth network traffic anomalies.
-- **MITRE ATT&CK Correlation**: Maps every flagged threat to enterprise tactics (Defense Evasion, Discovery, Credential Access, Impact).
+Modern Security Operations Centers (SOCs) must analyze large volumes of network telemetry while minimizing alert fatigue.
+
+**CyberSleuth** provides the following capabilities:
+
+- **Network Flow Validation:** Validates network-flow parameters and checks uploaded CSV files for relevant network-traffic features.
+- **Machine Learning Classification:** Classifies network traffic into attack categories such as DDoS, PortScan, brute-force attacks, and benign traffic.
+- **Anomaly Detection:** Uses Isolation Forest to identify unusual network traffic patterns.
+- **MITRE ATT&CK Correlation:** Associates detected threats with relevant enterprise tactics and techniques.
+- **Threat Analysis:** Presents predictions, anomaly scores, severity indicators, and investigation information.
+- **Report Generation:** Supports the generation of threat-intelligence reports and enriched datasets.
 
 ---
 
-## 2. 3-Tier Full-Stack Architecture
+## 2. Three-Tier Full-Stack Architecture
 
 | Tier | Technology | Port | Responsibilities |
 |---|---|---|---|
-| **Frontend** | React 18, Vite, Vanilla CSS | `5173` | Handcrafted SOC dark theme, real-time scanning progress bar (0% -> 100%), dataset switcher, severity distribution bar, quick attack filter pills, and CSV export. |
-| **API Gateway** | Java Spring Boot 2.7 (Maven) | `8085` | High-throughput REST API, CORS management, error handling, in-memory scan auditing history. |
-| **ML Intelligence** | Python Flask, Scikit-Learn | `5000` | Random Forest inference, Isolation Forest anomaly scoring, 17-parameter DMV statistical distributions, and dataset validation. |
+| Frontend | React 18, Vite, CSS | `5173` | Security dashboard, traffic scanning, filtering, visualizations, and CSV export |
+| API Gateway | Java, Spring Boot, Maven | `8085` | REST API, CORS configuration, error handling, and scan history |
+| ML Intelligence | Python, Flask, Scikit-learn | `5000` | ML inference, anomaly scoring, traffic validation, and DMV statistics |
+
+### Architecture Flow
+
+```text
+User
+  |
+  v
+React Frontend (Port 5173)
+  |
+  v
+Java Spring Boot API (Port 8085)
+  |
+  v
+Python Flask ML Service (Port 5000)
+  |
+  v
+Prediction, Anomaly Detection, and Threat Analysis
+```
 
 ---
 
-## 3. Clean Directory Structure
+## 3. Key Features
+
+### Network Traffic Analysis
+- Load and validate network-traffic datasets.
+- Analyze network-flow characteristics.
+- Identify potentially suspicious traffic.
+- Review traffic classifications and anomaly scores.
+
+### Machine Learning
+- Supervised multi-class traffic classification.
+- Random Forest model inference.
+- Isolation Forest anomaly detection.
+- Model training and saved-model support.
+
+### Threat Intelligence
+- Attack-category classification.
+- Threat severity assessment.
+- MITRE ATT&CK-related analysis.
+- Suggested mitigation information.
+
+### Visualization and Reporting
+- Security operations dashboard.
+- Threat-distribution visualizations.
+- Network-flow inspection.
+- CSV export and PDF report generation.
+
+---
+
+## 4. Directory Structure
 
 ```text
 PROJECT_DMV_ML/
-├── client/                     # React 18 + Vite Frontend Application (Port 5173)
-│   ├── public/test_datasets/   # 4 validated pre-loaded test datasets
+├── client/
+│   ├── public/
+│   │   └── test_datasets/
 │   └── src/
-│       ├── App.jsx             # Main SOC Dashboard, scan progress, filtering, modal
-│       ├── index.css           # Human-crafted GitHub Dark / SOC theme styles
-│       └── main.jsx            # React root mount
-├── server/                     # Java Spring Boot 2.7 REST API (Port 8085)
-│   ├── pom.xml                 # Maven project configuration (Java 8 compatible)
-│   └── src/main/java/com/cybersleuth/
-│       ├── CyberSleuthApplication.java
-│       ├── controller/ThreatController.java
-│       └── service/ThreatService.java
-├── ml-service/                 # Python Flask ML & DMV Microservice (Port 5000)
-│   └── app.py                  # Model inference, validation, DMV metrics endpoints
-├── src/                        # Core Python Machine Learning & DMV Modules
-│   ├── train_model.py          # Supervised training & checkpoint loader
-│   ├── prediction.py           # Multi-class inference & severity triage
-│   ├── threat_analysis.py      # MITRE ATT&CK mapping & heuristic explanations
-│   ├── anomaly_detection.py    # Isolation Forest anomaly scoring
-│   ├── data_loader.py          # Telemetry cleaning & header normalization
-│   └── report_generator.py     # Forensic PDF & CSV report generators
+│       ├── App.jsx
+│       ├── index.css
+│       ├── main.jsx
+│       └── assets/
+├── server/
+│   ├── pom.xml
+│   └── src/main/
+│       ├── java/com/cybersleuth/
+│       │   ├── CyberSecurityApplication.java
+│       │   ├── config/
+│       │   ├── controller/
+│       │   └── service/
+│       └── resources/
+│           └── application.properties
+├── ml-service/
+│   └── app.py
+├── src/
+│   ├── train_model.py
+│   ├── prediction.py
+│   ├── threat_analysis.py
+│   ├── anomaly_detection.py
+│   ├── data_loader.py
+│   ├── pcap_parser.py
+│   ├── preprocessing.py
+│   ├── report_generator.py
+│   └── visualization.py
 ├── data/
-│   ├── sample_network_traffic.csv  # Synthetic benchmark dataset
-│   └── test_datasets/          # 4 Tested & Validated Attack Datasets:
-│       ├── 1_ddos_attack_traffic.csv
-│       ├── 2_portscan_recon_traffic.csv
-│       ├── 3_bruteforce_auth_traffic.csv
-│       └── 4_benign_enterprise_traffic.csv
-├── models/                     # Saved Scikit-Learn Random Forest & Isolation Forest bundles
-├── reports/                    # Generated forensic threat intelligence reports
-├── run_all.bat                 # One-click Windows batch launcher
-├── run_all.ps1                 # One-click Windows PowerShell launcher
-└── requirements.txt            # Python dependencies
+│   ├── sample_network_traffic.csv
+│   ├── generate_sample_data.py
+│   └── test_datasets/
+├── models/
+├── reports/
+├── tests/
+├── requirements.txt
+├── run_all.bat
+├── run_all.ps1
+└── README.md
 ```
 
 ---
 
-## 4. One-Click Startup
+## 5. One-Click Startup
 
-To launch all 3 tiers with a single command:
+### Prerequisites
 
-### Via Batch File:
-```cmd
+Install the required software:
+
+- Python and pip
+- Node.js and npm
+- Java Development Kit compatible with your Spring Boot configuration
+- Maven, or use the Maven wrapper if your project includes one
+
+### Step 1: Install Python dependencies
+
+From the project root:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Step 2: Install frontend dependencies
+
+```bash
+cd client
+npm install
+cd ..
+```
+
+### Step 3: Start the application
+
+On Windows, run:
+
+```bat
 run_all.bat
 ```
 
-### Via PowerShell:
+Alternatively, use PowerShell:
+
 ```powershell
 .\run_all.ps1
 ```
 
-Once launched, navigate to **`http://localhost:5173`** in your browser. All services will connect automatically:
+These scripts should start the required services if they are configured correctly.
+
+### Step 4: Open the application
+
+Open the frontend in your browser:
+
+**http://localhost:5173**
+
+The configured service endpoints are:
+
 - Frontend: `http://localhost:5173`
-- Java API: `http://localhost:8085/api/health`
-- Python ML: `http://localhost:5000/api/ml/health`
-   - **Interactive Confusion Matrix** showing exact misclassification rates per category
-   - **Top Feature Importance Rankings** showing key predictive metrics
-5. Persist the model checkpoint using the **Saved Models Manager** tab.
+- Java API health endpoint: `http://localhost:8085/api/health`
+- Python ML health endpoint: `http://localhost:5000/api/ml/health`
 
-### C. Automated Threat Detection & Triage (`pages/3_Threat_Detection.py`)
-1. Review the high-level triage KPIs: *Evaluated Flows*, *Baseline Normal*, *Potentially Suspicious*, and *Statistical Anomalies*.
-2. Filter records using the controls:
-   - Check *Display Potentially Suspicious Records Only*
-   - Filter by specific attack classes (e.g. `PortScan`, `DDoS`, `Botnet`)
-   - Filter by threat severity (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `SAFE`)
-3. Use the **Network Flow Forensic Inspector**:
-   - Choose a flow index from the dropdown.
-   - Inspect exact telemetry (e.g., `Port 22 SSH`, `Flow Duration`, `SYN flag without ACK`).
-   - Read the model's behavioral justification and recommended mitigation steps.
-
-### D. Attack Pattern Discovery & MITRE ATT&CK (`pages/4_Attack_Patterns.py`)
-1. View the **Frequency Table** showing the distribution and MITRE technique alignment of discovered traffic patterns.
-2. Explore multi-dimensional clustering in the interactive **Scatter Plot** (`Flow Duration` vs. `Flow Packets/s`).
-3. Inspect the **Transport Protocol & Targeted Destination Port** breakdown.
-4. Review the **Stealth / Zero-Day Alerts table**: displays flows classified as Benign that exhibited high Isolation Forest anomaly scores.
-5. Reference the full **MITRE ATT&CK Remediation Playbook** table.
-
-### E. Exporting Forensic Reports (`pages/5_Reports.py`)
-1. Review the **Report Live Preview** detailing dataset parameters, validation metrics, and detected threats.
-2. Click **📥 Download Enriched CSV Dataset** to export telemetry augmented with model predictions and anomaly scores.
-3. Click **📥 Download Executive PDF Threat Report** to generate and download a publication-ready PDF summary created with ReportLab.
+Endpoint availability depends on the actual implementation and service configuration.
 
 ---
 
-## 9. Interpreting Predictions & Anomaly Scores
+## 6. Datasets and Verification
 
-| Classification Field | Values / Range | Forensic Meaning |
+The project includes sample network-traffic data and test datasets for evaluating traffic classification.
+
+Example datasets:
+
+```text
+data/
+├── sample_network_traffic.csv
+└── test_datasets/
+    ├── 1_ddos_attack_traffic.csv
+    ├── 2_portscan_recon_traffic.csv
+    ├── 3_bruteforce_auth_traffic.csv
+    └── 4_benign_enterprise_traffic.csv
+```
+
+### Testing Recommendations
+
+1. Load a sample dataset.
+2. Confirm that its columns are recognized by the application.
+3. Run the prediction pipeline.
+4. Review predicted attack categories and anomaly scores.
+5. Compare results against the known dataset labels where available.
+6. Export a report and review its contents.
+
+---
+
+## 7. API Endpoints
+
+The project is configured to use separate Java and Python services.
+
+| Service | Endpoint | Purpose |
 |---|---|---|
-| **Model Prediction** | `BENIGN`, `PortScan`, `DDoS`, `FTP-Patator`, `SSH-Patator`, `DoS-Hulk`, `Web Attack`, `Botnet` | Supervised multi-class estimate based on learned statistical flow signatures. |
-| **Prediction Confidence** | `0.0% – 100.0%` | Maximum posterior class probability output by the ensemble (`predict_proba`). |
-| **Potentially Suspicious** | `Yes` / `No` | Binary flag assigned when the model predicts an attack category or the anomaly score exceeds 0.75. |
-| **Anomaly Score** | `0.0 – 1.0` | Normalized decision boundary distance from Isolation Forest. Scores > 0.75 indicate significant statistical deviation from normal flow behavior. |
-| **Threat Severity** | `SAFE`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` | Compound risk index combining prediction confidence, anomaly score, and threat criticality. |
+| Java API | `/api/health` | Health check |
+| Python ML | `/api/ml/health` | ML-service health check |
+
+Base URLs:
+
+- Java: `http://localhost:8085`
+- Python: `http://localhost:5000`
+
+For additional endpoints, refer to the controller and service implementations in the project source code.
+
+---
+
+## 8. Using the Platform
+
+### A. Traffic Analysis
+1. Open the web dashboard.
+2. Select or upload an appropriate network-traffic dataset.
+3. Start the analysis.
+4. Review the resulting classifications and statistics.
+
+### B. Model Evaluation
+1. Train or load the configured model.
+2. Review the available evaluation metrics.
+3. Examine the confusion matrix and feature-importance results if implemented.
+4. Compare predictions against known labels.
+
+### C. Threat Detection
+1. Review evaluated flows and potentially suspicious records.
+2. Filter traffic by attack category or severity if supported.
+3. Inspect relevant network-flow attributes.
+4. Review model explanations and mitigation recommendations.
+
+### D. Attack Pattern Analysis
+1. Review the distribution of detected traffic patterns.
+2. Explore available plots and statistical summaries.
+3. Examine anomalous flows.
+4. Review associated MITRE ATT&CK information where implemented.
+
+### E. Report Generation
+1. Run the analysis on a dataset.
+2. Review the generated report preview if available.
+3. Export the enriched CSV or PDF report if supported by the application.
+
+---
+
+## 9. Interpreting Predictions and Anomaly Scores
+
+| Classification Field | Values / Range | Meaning |
+|---|---|---|
+| Model Prediction | `BENIGN`, `PortScan`, `DDoS`, and other configured classes | Predicted traffic category |
+| Prediction Confidence | `0%–100%`, when available | Model-reported confidence or class probability |
+| Potentially Suspicious | `Yes` / `No`, if implemented | Indicator for traffic requiring further review |
+| Anomaly Score | Depends on the implementation | Numerical measure used to identify unusual traffic |
+| Threat Severity | `SAFE`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`, if implemented | Risk category assigned by the application |
+
+The exact interpretation of these values depends on the trained models, preprocessing pipeline, and scoring logic.
 
 ---
 
 ## 10. Suitable Public Datasets
 
-You can download and evaluate real-world intrusion detection datasets with this application:
+The following public datasets may be useful for evaluating network intrusion-detection systems:
 
-1. **CIC-IDS2017 (Canadian Institute for Cybersecurity)**:
-   - *URL*: [UNB CIC-IDS2017 Repository](https://www.unb.ca/cic/datasets/ids-2017.html)
-   - *Files*: `Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv`, `Wednesday-workingHours.pcap_ISCX.csv`
-   - *Compatibility*: Fully compatible. Column headers with leading whitespaces are automatically cleaned.
-2. **UNSW-NB15 (University of New South Wales)**:
-   - *URL*: [UNSW-NB15 Dataset](https://research.unsw.edu.au/projects/unsw-nb15-dataset)
-   - *Compatibility*: Compatible. Select `attack_cat` or `label` as the target column.
-3. **KDD-Cup99 / NSL-KDD**:
-   - *URL*: [NSL-KDD Dataset](https://www.unb.ca/cic/datasets/nsl.html)
-   - *Compatibility*: Supported after converting raw dumps to CSV with column headers.
+1. **CIC-IDS2017**
+   - Dataset: [Canadian Institute for Cybersecurity — CIC-IDS2017](https://www.unb.ca/cic/datasets/ids-2017.html)
+   - Contains labeled network traffic for intrusion-detection research.
+
+2. **UNSW-NB15**
+   - Dataset: [UNSW-NB15 Research Dataset](https://research.unsw.edu.au/projects/unsw-nb15-dataset)
+   - Contains normal and malicious network-traffic records.
+
+3. **KDD Cup 99 / NSL-KDD**
+   - Dataset: [NSL-KDD](https://www.unb.ca/cic/datasets/nsl.html)
+   - Commonly used for intrusion-detection research and experimentation.
+
+Check dataset columns, label formats, and preprocessing requirements before using an external dataset with the application.
 
 ---
 
-## 11. Forensic Disclaimer, Limitations & Future Work
+## 11. Limitations and Future Work
 
-### Academic & Forensic Integrity Notice
-> **DISCLAIMER:** All predictions, anomaly flags, and threat severity ratings produced by this software are probabilistic outputs generated by Machine Learning models. The software explicitly applies labels such as **"Model Prediction"** and **"Potentially Suspicious"**. These indicators assist security analysts during triage and do **not** constitute definitive proof of cyber compromise without secondary confirmation from endpoint logs, full packet payload inspection (PCAP), and threat intelligence corroboration.
-
-### Known Limitations
-- High-volume PCAPs (>100MB) can require significant CPU time for Scapy packet-by-packet parsing. For production environments, flow tools such as `Zeek` or `CICFlowMeter` are recommended.
-- Classifiers trained on a specific network topology may exhibit distribution drift when evaluated on networks with drastically different baseline traffic.
+### Limitations
+- Large packet captures may require substantial CPU time and memory.
+- Models may perform differently on network traffic that differs from their training data.
+- Predictions can contain false positives and false negatives.
+- Results depend on data quality, feature extraction, preprocessing, and model performance.
 
 ### Future Enhancements
-- Integration of SHAP (SHapley Additive exPlanations) for local explainability trees.
-- Direct STIX 2.1 / TAXII 2.1 threat feed integration.
-- Real-time live network interface sniffing with automated alerting triggers.
+- SHAP-based model explainability.
+- STIX/TAXII threat-intelligence integration.
+- Real-time network monitoring.
+- Improved evaluation across multiple public datasets.
+- Enhanced alerting and security-dashboard capabilities.
+
+### Academic and Forensic Disclaimer
+
+CyberSleuth is intended for academic, research, and defensive security analysis. Machine learning predictions and anomaly indicators are probabilistic results, not definitive proof of a security incident. Confirm important findings using appropriate logs, packet analysis, and additional threat-intelligence sources.
+
+---
+
+## License
+
+Academic and research use. Add a formal license file if you intend to distribute the project under specific licensing terms.
