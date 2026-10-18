@@ -1,0 +1,14 @@
+# Multi-stage Dockerfile for Vercel Container Runtime (Java Spring Boot)
+FROM maven:3.9.6-eclipse-temurin-8 AS build
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+FROM eclipse-temurin:8-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/cybersleuth-server-*.jar app.jar
+ENV PORT=8085
+EXPOSE 8085
+ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-Dserver.port=${PORT}", "-jar", "app.jar"]

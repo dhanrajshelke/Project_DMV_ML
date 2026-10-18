@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
-// Backend Endpoints
-const JAVA_API_BASE = 'http://localhost:8085/api';
-const PYTHON_API_BASE = 'http://localhost:5000/api/ml';
+// Backend Endpoints (supports Vercel public rewrites and local development)
+const JAVA_API_BASE = import.meta.env.VITE_JAVA_API_BASE || (import.meta.env.DEV ? 'http://localhost:8085/api' : '/api');
+const PYTHON_API_BASE = import.meta.env.VITE_PYTHON_API_BASE || (import.meta.env.DEV ? 'http://localhost:5000/api/ml' : '/api/ml');
 
 export default function App() {
   const [currentView, setCurrentView] = useState('traffic'); // 'traffic' | 'analytics' | 'architecture'

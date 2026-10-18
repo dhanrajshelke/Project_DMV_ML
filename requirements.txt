@@ -1,7 +1,9 @@
 # Cyber Threat Intelligence and Attack Pattern Discovery
 # Requirements File
 
-# Core Data Processing
+# Web Services & API Frameworks
+Flask>=3.0.0
+flask-cors>=4.0.0
 pandas>=2.0.0
 numpy>=1.24.0
 
