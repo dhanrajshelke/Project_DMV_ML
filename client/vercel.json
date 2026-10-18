@@ -1,0 +1,15 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/ml/:path*",
+      "destination": "https://YOUR-ML-SERVICE.onrender.com/api/ml/:path*"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://YOUR-JAVA-SERVICE.onrender.com/api/:path*"
+    }
+  ]
+}

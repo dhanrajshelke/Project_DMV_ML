@@ -412,62 +412,21 @@ export default function App() {
           </button>
         </nav>
 
-        {/* Sidebar Status Footer */}
-        <div className="sidebar-footer">
-          <div className="service-status-row">
-            <span>Spring Boot (:8085)</span>
-            <span style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-              <span className={`status-dot ${servicesStatus.java === 'Active' ? 'active' : 'inactive'}`}></span>
-              {servicesStatus.java}
-            </span>
-          </div>
 
-          <div className="service-status-row">
-            <span>Python ML (:5000)</span>
-            <span style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-              <span className={`status-dot ${servicesStatus.python === 'Active' ? 'active' : 'inactive'}`}></span>
-              {servicesStatus.python}
-            </span>
-          </div>
 
-          <div className="user-profile-bar">
-            <div className="user-avatar-initials" style={{ background: 'linear-gradient(135deg, #0284C7, #6366F1)', width: '28px', height: '28px' }}>
-              GRP
-            </div>
-            <div>
-              <div style={{fontWeight: 600, fontSize: '12px'}}>Project Team Workspace</div>
-              <div style={{fontSize: '11px', color: 'var(--fg-subtle)'}}>Group Project &bull; Java &amp; Python ML</div>
-            </div>
-          </div>
-        </div>
       </aside>
 
       {/* 2. Main Workspace */}
       <div className="main-workspace">
         {/* Top Navbar */}
         <header className="top-navbar">
-          <div className="breadcrumb-area">
-            <span>CyberSleuth</span>
-            <span>/</span>
-            <span className="current">
-              {currentView === 'traffic' ? 'Traffic Logs' : currentView === 'analytics' ? 'Attack Analytics' : 'Scan Audit History'}
-            </span>
-          </div>
           <div style={{display: 'flex', alignItems: 'center', gap: '14px'}}>
             {loading ? (
               <div className="navbar-running-badge">
                 <span className="pulse-dot-cyan"></span>
                 RUNNING ML CLASSIFICATION ({scanningProgress}%)
               </div>
-            ) : lastScanCompleted ? (
-              <div className="ready-badge">
-                <span className="status-dot active"></span>
-                <span>Last Scan: {lastScanCompleted}</span>
-              </div>
             ) : null}
-            <div style={{fontSize: '12px', color: 'var(--fg-muted)'}}>
-              Active File: <strong style={{color: '#38BDF8'}}>{activeDatasetName}</strong>
-            </div>
           </div>
         </header>
 
@@ -501,9 +460,7 @@ export default function App() {
                 />
               </label>
 
-              <button className="btn btn-default" onClick={handleExportCsv} disabled={loading || !filteredRows.length}>
-                Export CSV
-              </button>
+
             </div>
           </div>
 
@@ -545,25 +502,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Scan Completed Notification Banner */}
-          {scanCompletedNotice && !loading && (
-            <div className="scan-completed-banner">
-              <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                <span style={{color: '#10B981', fontWeight: 700}}>✓</span>
-                <span>
-                  Scan Completed at <strong>{scanCompletedNotice.time}</strong> for <strong>{scanCompletedNotice.dataset}</strong>: 
-                  Evaluated <strong>{scanCompletedNotice.total}</strong> flows, flagged <strong>{scanCompletedNotice.threats}</strong> threats ({scanCompletedNotice.pct}% detection ratio).
-                </span>
-              </div>
-              <button 
-                className="btn btn-default" 
-                style={{padding: '2px 8px', fontSize: '11px'}}
-                onClick={() => setScanCompletedNotice(null)}
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
 
           {/* Dataset Validation Error Banner */}
           {validationError && (
