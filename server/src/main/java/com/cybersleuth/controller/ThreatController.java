@@ -1,4 +1,4 @@
-```java
+
 package com.cybersleuth.controller;
 
 import com.cybersleuth.service.ThreatService;
@@ -15,7 +15,8 @@ import java.util.Map;
     "http://localhost:3000",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:3000",
-    "https://project-dmv-ml.vercel.app"
+    "https://project-dmv-ml.vercel.app",
+    "https://project-dmv-ml-pmci.vercel.app"
 })
 public class ThreatController {
 
@@ -48,4 +49,3 @@ public class ThreatController {
         return ResponseEntity.ok(threatService.getAuditHistory());
     }
 }
-```
