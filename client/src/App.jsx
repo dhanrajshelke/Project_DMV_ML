@@ -103,7 +103,7 @@ export default function App() {
     const headers = rawLines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
     const rows = [];
 
-    for (let i = 1; i < Math.min(rawLines.length, 500); i++) {
+    for (let i = 1; i < rawLines.length; i++) {
       const line = rawLines[i];
       if (!line) continue;
       const cols = line.split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
