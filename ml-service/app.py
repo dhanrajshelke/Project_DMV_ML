@@ -138,124 +138,133 @@ def run_triage():
     Executes ML inference and DMV analysis on network flow records.
     Can accept JSON array of records, or if empty, uses the built-in benchmark dataset.
     """
-    bundle, model_name = get_or_load_active_model()
-    if not bundle:
-        return jsonify({"error": "No trained model bundle found in models directory."}), 500
+    import traceback
+    try:
+        bundle, model_name = get_or_load_active_model()
+        if not bundle:
+            return jsonify({"error": "No trained model bundle found in models directory."}), 500
 
-    data = request.get_json(silent=True) or {}
-    records = data.get("records")
-    
-    # If no records provided in request payload, use sample benchmark dataset
-    if not records or len(records) == 0:
-        sample_path = os.path.join(PROJECT_ROOT, "data", "sample_network_traffic.csv")
-        df = pd.read_csv(sample_path)
-    else:
-        df = pd.DataFrame(records)
-
-    # Clean leading/trailing column whitespaces
-    df = clean_column_names(df)
-
-    # Validate dataset before attempting inference
-    is_valid, validation_msg, found_cols = validate_traffic_records(df, bundle.get("feature_names", []))
-    if not is_valid:
-        return jsonify({
-            "status": "VALIDATION_ERROR",
-            "error": validation_msg,
-            "found_columns": found_cols,
-            "sample_expected": ["Destination Port", "Flow Duration", "Total Fwd Packets", "Protocol", "Flow Packets/s"]
-        }), 400
-
-    # Run inference pipeline
-    enriched_df, summary = run_traffic_inference(df, bundle)
-
-    # MITRE ATT&CK Mapping
-    mitre_summary = compile_threat_intelligence_summary(enriched_df, summary)
-
-    # DMV (Data Mining & Visualization) Metrics Calculation
-    # 1. Protocol Distribution
-    protocol_counts = {}
-    for col in ["Protocol", "protocol", "proto"]:
-        if col in enriched_df.columns:
-            protocol_counts = enriched_df[col].value_counts().head(5).to_dict()
-            # Convert numeric protocols to strings if needed
-            protocol_counts = {str(k): int(v) for k, v in protocol_counts.items()}
-            break
-
-    # 2. Targeted Ports
-    port_counts = {}
-    for col in ["Destination Port", "destination_port", "Dst Port"]:
-        if col in enriched_df.columns:
-            port_counts = {str(k): int(v) for k, v in enriched_df[col].value_counts().head(8).items()}
-            break
-
-    # 3. Anomaly Score Distribution (binned for histogram)
-    anomaly_scores = enriched_df["Anomaly Score"].dropna().tolist()
-    hist_counts, bin_edges = np.histogram(anomaly_scores, bins=10, range=(0.0, 1.0))
-    anomaly_histogram = [
-        {"range": f"{round(bin_edges[i], 1)}-{round(bin_edges[i+1], 1)}", "count": int(hist_counts[i])}
-        for i in range(len(hist_counts))
-    ]
-
-    # 4. Feature Importances
-    feature_importances = bundle.get("feature_importances", [])
-    if isinstance(feature_importances, pd.DataFrame):
-        top_features = feature_importances.head(8).to_dict(orient="records")
-    elif isinstance(feature_importances, list):
-        top_features = feature_importances[:8]
-    else:
-        top_features = []
-
-    # Prepare records for the UI table (user-configurable limit without arbitrary 50 cap)
-    display_cols = [
-        col for col in [
-            "Destination Port", "Protocol", "Flow Duration", "Total Fwd Packets",
-            "Model Prediction", "Prediction Confidence (%)", "Potentially Suspicious",
-            "Anomaly Status", "Anomaly Score", "Threat Severity"
-        ] if col in enriched_df.columns
-    ]
-    
-    # Check user-specified limit parameter (default: unlimited up to 5000)
-    user_limit = data.get("limit")
-    if user_limit is not None and str(user_limit).upper() != "ALL":
-        try:
-            user_limit = int(user_limit)
-        except (ValueError, TypeError):
-            user_limit = None
-    else:
-        user_limit = None
-
-    table_records = enriched_df[display_cols].copy()
-    if user_limit and user_limit > 0:
-        table_records = table_records.head(user_limit)
-    else:
-        table_records = table_records.head(5000)
-
-    # Add record id
-    table_records.insert(0, "Record_ID", [f"FLOW-{i+1:04d}" for i in range(len(table_records))])
-    
-    # Map MITRE tactic to each row for immediate forensic display
-    def attach_tactic(pred):
-        info = get_mitre_mapping(str(pred))
-        return info.get("tactic", "N/A") if info else "Normal"
+        data = request.get_json(silent=True) or {}
+        records = data.get("records")
         
-    table_records["MITRE_Tactic"] = table_records["Model Prediction"].apply(attach_tactic)
-    
-    records_json = table_records.replace({np.nan: None}).to_dict(orient="records")
+        # If no records provided in request payload, use sample benchmark dataset
+        if not records or len(records) == 0:
+            sample_path = os.path.join(PROJECT_ROOT, "data", "sample_network_traffic.csv")
+            df = pd.read_csv(sample_path)
+        else:
+            df = pd.DataFrame(records)
 
-    response_payload = {
-        "model_used": model_name,
-        "summary": summary,
-        "mitre_summary": mitre_summary,
-        "dmv_metrics": {
-            "protocol_counts": protocol_counts,
-            "port_counts": port_counts,
-            "anomaly_histogram": anomaly_histogram,
-            "feature_importances": top_features
-        },
-        "records": records_json
-    }
+        # Clean leading/trailing column whitespaces
+        df = clean_column_names(df)
 
-    return jsonify(response_payload)
+        # Validate dataset before attempting inference
+        is_valid, validation_msg, found_cols = validate_traffic_records(df, bundle.get("feature_names", []))
+        if not is_valid:
+            return jsonify({
+                "status": "VALIDATION_ERROR",
+                "error": validation_msg,
+                "found_columns": found_cols,
+                "sample_expected": ["Destination Port", "Flow Duration", "Total Fwd Packets", "Protocol", "Flow Packets/s"]
+            }), 400
+
+        # Run inference pipeline
+        enriched_df, summary = run_traffic_inference(df, bundle)
+
+        # MITRE ATT&CK Mapping
+        mitre_summary = compile_threat_intelligence_summary(enriched_df, summary)
+
+        # DMV (Data Mining & Visualization) Metrics Calculation
+        # 1. Protocol Distribution
+        protocol_counts = {}
+        for col in ["Protocol", "protocol", "proto"]:
+            if col in enriched_df.columns:
+                protocol_counts = enriched_df[col].value_counts().head(5).to_dict()
+                # Convert numeric protocols to strings if needed
+                protocol_counts = {str(k): int(v) for k, v in protocol_counts.items()}
+                break
+
+        # 2. Targeted Ports
+        port_counts = {}
+        for col in ["Destination Port", "destination_port", "Dst Port"]:
+            if col in enriched_df.columns:
+                port_counts = {str(k): int(v) for k, v in enriched_df[col].value_counts().head(8).items()}
+                break
+
+        # 3. Anomaly Score Distribution (binned for histogram)
+        anomaly_scores = enriched_df["Anomaly Score"].dropna().tolist()
+        hist_counts, bin_edges = np.histogram(anomaly_scores, bins=10, range=(0.0, 1.0))
+        anomaly_histogram = [
+            {"range": f"{round(bin_edges[i], 1)}-{round(bin_edges[i+1], 1)}", "count": int(hist_counts[i])}
+            for i in range(len(hist_counts))
+        ]
+
+        # 4. Feature Importances
+        feature_importances = bundle.get("feature_importances", [])
+        if isinstance(feature_importances, pd.DataFrame):
+            top_features = feature_importances.head(8).to_dict(orient="records")
+        elif isinstance(feature_importances, list):
+            top_features = feature_importances[:8]
+        else:
+            top_features = []
+
+        # Prepare records for the UI table (user-configurable limit without arbitrary 50 cap)
+        display_cols = [
+            col for col in [
+                "Destination Port", "Protocol", "Flow Duration", "Total Fwd Packets",
+                "Model Prediction", "Prediction Confidence (%)", "Potentially Suspicious",
+                "Anomaly Status", "Anomaly Score", "Threat Severity"
+            ] if col in enriched_df.columns
+        ]
+        
+        # Check user-specified limit parameter (default: unlimited up to 5000)
+        user_limit = data.get("limit")
+        if user_limit is not None and str(user_limit).upper() != "ALL":
+            try:
+                user_limit = int(user_limit)
+            except (ValueError, TypeError):
+                user_limit = None
+        else:
+            user_limit = None
+
+        table_records = enriched_df[display_cols].copy()
+        if user_limit and user_limit > 0:
+            table_records = table_records.head(user_limit)
+        else:
+            table_records = table_records.head(5000)
+
+        # Add record id
+        table_records.insert(0, "Record_ID", [f"FLOW-{i+1:04d}" for i in range(len(table_records))])
+        
+        # Map MITRE tactic to each row for immediate forensic display
+        def attach_tactic(pred):
+            info = get_mitre_mapping(str(pred))
+            return info.get("tactic", "N/A") if info else "Normal"
+            
+        table_records["MITRE_Tactic"] = table_records["Model Prediction"].apply(attach_tactic)
+        
+        records_json = table_records.replace({np.nan: None}).to_dict(orient="records")
+
+        response_payload = {
+            "model_used": model_name,
+            "summary": summary,
+            "mitre_summary": mitre_summary,
+            "dmv_metrics": {
+                "protocol_counts": protocol_counts,
+                "port_counts": port_counts,
+                "anomaly_histogram": anomaly_histogram,
+                "feature_importances": top_features
+            },
+            "records": records_json
+        }
+
+        return jsonify(response_payload)
+
+    except Exception as e:
+        print(f"[!] Triage error: {traceback.format_exc()}")
+        return jsonify({
+            "error": f"ML triage pipeline failed: {str(e)}",
+            "trace": traceback.format_exc()
+        }), 500
 
 
 if __name__ == "__main__":
